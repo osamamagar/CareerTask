@@ -37,6 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    #Local
+    'blog.apps.BlogConfig',
+    #third_party
+    
 ]
 
 MIDDLEWARE = [
@@ -70,15 +74,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'TaskOneSolution.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'djongo',
+        'ENFORCE_SCHEMA': False,  # Optional. If set to True, schema checks are enforced.
+        'NAME': 'task_one_solution',
+        'CLIENT': {
+            'host': 'localhost',
+            'port': 27017,  # Default MongoDB port
+            'username': 'osama',
+            'password': '3799',
+        }
     }
 }
+
+AUTH_USER_MODEL = 'blog.User'
 
 
 # Password validation
@@ -105,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'EET'
 
 USE_I18N = True
 
