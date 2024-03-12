@@ -86,6 +86,7 @@ DATABASES = {
             'port': 27017,  # Default MongoDB port
             'username': 'osama',
             'password': '3799',
+            'authSource': 'admin'  # Specify the authentication database
         }
     }
 }
