@@ -26,27 +26,35 @@ from rest_framework.authentication import TokenAuthentication
 
 
 ############################# Login ##########################
-
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([])
 def user_login(request):
-    try:
-        username = request.data['username']
-        password = request.data['password']
-    except KeyError:
-        return Response({'error': 'Username or password not provided'}, status=400)
+    # Extract username and password from request data
+    username = request.data.get('username')
+    password = request.data.get('password')
 
+    # Authenticate user
     user = authenticate(username=username, password=password)
+
     if user:
-        if user.is_email_verified or user.is_superuser:
-            token, created = Token.objects.get_or_create(user=user)
-            user.token = token.key
-            user.save()
-            return Response({"token": token.key, "message": "Welcome to the Blog page"}, status=200)
+        # Check if user's email is verified
+        if user.is_email_verified:
+            # Generate or retrieve token
+            token, _ = Token.objects.get_or_create(user=user)
+            # Serialize user data (if needed)
+            user_serializer = UserSerializer(user)
+            # Return token and user data in the response
+            return Response({
+                'token': token.key,
+                'user': user_serializer.data,
+                'message': 'Login successful.'
+            }, status=status.HTTP_200_OK)
         else:
-            return Response({'error': 'Email is not activated', 'email': user.email}, status=401)
+            return Response({'error': 'Email is not verified.'}, status=status.HTTP_401_UNAUTHORIZED)
     else:
-        return Response({'error': 'Invalid username or password'}, status=401)
+        return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 
 ####################################---------  logout  -------------###################################
 @api_view(["POST"])
