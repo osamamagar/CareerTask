@@ -1,0 +1,2 @@
+To test the login 
+curl -X POST -H "Content-Type: application/json" -d '{"username": "osama", "password": "osm12345"}' http://127.0.0.1:8000/blog/api/login/
