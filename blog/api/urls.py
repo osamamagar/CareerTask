@@ -1,6 +1,10 @@
-from django.urls import path
+from django.urls import path,include
 from .views import *
+from rest_framework.routers import DefaultRouter
 
+
+router = DefaultRouter()
+router.register(r'', PostsView, basename='post')
 
 urlpatterns =[
 
@@ -16,11 +20,15 @@ urlpatterns =[
     path('activate/<str:uidb64>/<str:token>/', activate_user, name='activate_user'),
 
 #------------------------- Post --------------------------------
-    path('create_post/',post_view,name= 'create_post'),
-    path('get_post/',post_view,name= 'get_post'),
-    path('edit_post/<int:id>/',get_edit_delete,name= 'edit_post'),
-    path('delete_post/<int:id>/',get_edit_delete,name= 'delete_post'),
-    path('get_post/<int:id>/',get_edit_delete,name= 'get_custom_post'),
+    # path('create_post/',post_view,name= 'create_post'),
+    # path('get_post/',post_view,name= 'get_post'),
+    # path('edit_post/<int:id>/',get_edit_delete,name= 'edit_post'),
+    # path('delete_post/<int:id>/',get_edit_delete,name= 'delete_post'),
+    # path('get_post/<int:id>/',get_edit_delete,name= 'get_custom_post'),
+
+    path('create_post/',post_publish,name= 'create_post'),
+    path('post_list/',post_list,name= 'create_post'),
+    path('viewset/', include(router.urls)),
 
 
 

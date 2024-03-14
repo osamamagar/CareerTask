@@ -18,35 +18,36 @@ import uuid
 from rest_framework import generics
 from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth import authenticate, login, logout
+from rest_framework.authtoken.models import Token
 
 
 
 #-----------------------View for user to login page ----------------
-@api_view(['POST'])
-@permission_classes([])
-def login_view(request):
-    if request.user.is_authenticated:
-        return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
+# @api_view(['POST'])
+# @permission_classes([])
+# def login_view(request):
+#     if request.user.is_authenticated:
+#         return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
 
-    username = request.data.get('username')
-    password = request.data.get('password')
+#     username = request.data.get('username')
+#     password = request.data.get('password')
 
-    user = authenticate(request, username=username, password=password)
+#     user = authenticate(request, username=username, password=password)
 
-    if user is not None:
-        login(request, user)
+#     if user is not None:
+#         login(request, user)
 
-        # Generate a new token for the authenticated user
-        user.token = uuid.uuid4()
-        user.save()
+#         # Generate a new token for the authenticated user
+#         user.token = uuid.uuid4()
+#         user.save()
 
-        return Response({
-            "status": "success",
-            "message": "Login successful.",
-            "token": str(user.token)
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
+#         return Response({
+#             "status": "success",
+#             "message": "Login successful.",
+#             "token": str(user.token)
+#         }, status=status.HTTP_200_OK)
+#     else:
+#         return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
 
 #-------------------Logs out for current users logged in---------------------
 @api_view(['POST'])
@@ -153,46 +154,153 @@ def activate_user(request, uidb64, token):
 
 # ------------------------Post View-------------------------
 
-@api_view(['GET', 'POST'])
-@permission_classes([AllowAny,])
-def post_view(request):
+# @api_view(['GET', 'POST'])
+# @permission_classes([AllowAny,])
+# def post_view(request):
+#     if request.method == 'POST':
+#         post_serializer=PostSerializer(data=request.data)
+#         if post_serializer.is_valid():
+#             post_serializer.save()
+#             return Response({"message":"Post was published","post":post_serializer.data},201)
+#         return Response({ post_serializer.errors,400})
+    
+#     elif request.method=='GET':
+#         posts = Post.get_all_posts()
+#         # posts = Post.objects.all()
+    
+#         serialized_post=PostSerializer(posts, many=True).data
+#         return Response({"data": serialized_post, "message": "success"},200 )
+
+
+# @api_view(['GET','PUT','DELETE'])
+# @permission_classes([AllowAny,])
+
+# def get_edit_delete(request, id):
+    
+#     post = Post.objects.filter(id=id).first()
+#     # first method  to return first object when you expect at most one object
+
+# # GET Method
+#     if request.method == 'GET':
+#         post_serialized = PostSerializer(post).data
+#         return  Response({"Data ":post_serialized}, status=200)
+    
+# # PUT Method
+#     elif request.method == 'PUT':
+#         post_serialized = PostSerializer(instance=post , data=request.data)
+#         if post_serialized.is_valid():
+#             post_serialized.save()
+#             return Response({"message":"Edit Done Successfuly","Post":post_serialized.data},200)
+#         return Response(post_serialized.errors, status=400)
+# # DELETE Method
+#     else:  
+#         post.delete()
+#         return Response({"message":"The Post was deleted","object Deleted":post.id})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def post_publish(request):
     if request.method == 'POST':
-        post_serializer=PostSerializer(data=request.data)
+        request.data['author'] = request.user.id
+        post_serializer = PostSerializer(data=request.data)
         if post_serializer.is_valid():
             post_serializer.save()
-            return Response({"message":"Post was published","post":post_serializer.data},201)
-        return Response({ post_serializer.errors,400})
+            
+            # Retrieve the token associated with the authenticated user
+            user_token = Token.objects.get(user=request.user)
+            
+            # Include token in the response
+            response_data = {
+                "message": "Post published successfully",
+                "post": post_serializer.data,
+            }
+            return Response(response_data, status=201)
+        return Response(post_serializer.errors, status=400)
     
-    elif request.method=='GET':
-        posts = Post.get_all_posts()
-        # posts = Post.objects.all()
-    
-        serialized_post=PostSerializer(posts, many=True).data
-        return Response({"data": serialized_post, "message": "success"},200 )
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def post_list(request):
+    if request.method == 'GET':
+        posts = Post.objects.all()
+        serialized_posts = PostSerializer(posts, many=True).data
+        return Response({"data": serialized_posts, "message": "success"}, status=200)
 
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def post_detail(request, id):
+    try:
+        post = Post.objects.get(id=id)
+    except Post.DoesNotExist:
+        return Response({"message": "Post not found"}, status=404)
 
-@api_view(['GET','PUT','DELETE'])
-@permission_classes([AllowAny,])
-
-def get_edit_delete(request, id):
-    
-    post = Post.objects.filter(id=id).first()
-    # first method  to return first object when you expect at most one object
-
-# GET Method
     if request.method == 'GET':
         post_serialized = PostSerializer(post).data
-        return  Response({"Data ":post_serialized}, status=200)
+        return Response({"Data": post_serialized}, status=200)
     
-# PUT Method
     elif request.method == 'PUT':
-        post_serialized = PostSerializer(instance=post , data=request.data)
-        if post_serialized.is_valid():
-            post_serialized.save()
-            return Response({"message":"Edit Done Successfuly","Post":post_serialized.data},200)
-        return Response(post_serialized.errors, status=400)
-# DELETE Method
-    else:  
-        post.delete()
-        return Response({"message":"The Post was deleted","object Deleted":post.id})
+        # Check if the current user is the author of the post
+        if request.user == post.author:
+            post_serialized = PostSerializer(instance=post, data=request.data)
+            if post_serialized.is_valid():
+                post_serialized.save()
+                return Response({"message": "Post updated successfully", "Post": post_serialized.data}, status=200)
+            return Response(post_serialized.errors, status=400)
+        else:
+            return Response({"message": "You are not authorized to update this post"}, status=403)
 
+    elif request.method == 'DELETE':
+        # Check if the current user is the author of the post
+        if request.user == post.author:
+            post.delete()
+            return Response({"message": "The post was deleted", "object_deleted": id}, status=200)
+        else:
+            return Response({"message": "You are not authorized to delete this post"}, status=403)
+        
+
+from rest_framework import viewsets
+from .customPermession import IsAuthor
+
+
+class PostsView(viewsets.ModelViewSet):
+    queryset = Post.objects.all().order_by('id')
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+    
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+    
+
+
+
+
+@api_view(['POST'])
+@permission_classes([])
+def login_view(request):
+    if request.user.is_authenticated:
+        return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
+
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    user = authenticate(request, username=username, password=password)
+
+    if user is not None:
+        login(request, user)
+
+        # Check if a token already exists for the user
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response({
+            "status": "success",
+            "message": "Login successful.",
+            "token": token.key
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
