@@ -1,55 +1,52 @@
-from rest_framework.decorators import api_view,permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from django.contrib.auth import authenticate
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import authenticate, login, logout
 from rest_framework.authtoken.models import Token
-from .serializers import *
+from rest_framework import generics, viewsets
+from django.views.decorators.csrf import csrf_exempt
+from blog.models import User, Post
+from .serializers import UserSerializer, PostSerializer
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, smart_str
 from django.template.loader import render_to_string
 from django.utils import timezone
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework import status
-from django.views.decorators.csrf import csrf_exempt
-from blog.models import *
 import uuid
-from rest_framework import generics
-from rest_framework.authentication import TokenAuthentication
-from django.contrib.auth import authenticate, login, logout
-from rest_framework.authtoken.models import Token
+from .serializers import RegisterSerializer, PostSerializer,UserSerializer 
 
 
 
 #-----------------------View for user to login page ----------------
-# @api_view(['POST'])
-# @permission_classes([])
-# def login_view(request):
-#     if request.user.is_authenticated:
-#         return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(['POST'])
+@permission_classes([])
+def login_view(request):
+    if request.user.is_authenticated:
+        return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
 
-#     username = request.data.get('username')
-#     password = request.data.get('password')
+    username = request.data.get('username')
+    password = request.data.get('password')
 
-#     user = authenticate(request, username=username, password=password)
+    user = authenticate(request, username=username, password=password)
 
-#     if user is not None:
-#         login(request, user)
+    if user is not None:
+        login(request, user)
 
-#         # Generate a new token for the authenticated user
-#         user.token = uuid.uuid4()
-#         user.save()
+        # Check if a token already exists for the user
+        token, created = Token.objects.get_or_create(user=user)
 
-#         return Response({
-#             "status": "success",
-#             "message": "Login successful.",
-#             "token": str(user.token)
-#         }, status=status.HTTP_200_OK)
-#     else:
-#         return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "status": "success",
+            "message": "Login successful.",
+            "token": token.key
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    #-------------------Logs out for current users logged in---------------------
 
-#-------------------Logs out for current users logged in---------------------
 @api_view(['POST'])
 def logout_view(request):
     logout(request)
@@ -57,29 +54,28 @@ def logout_view(request):
     # Revoke the token (optional)
     user = request.user
     if user.is_authenticated:
-        user.token = None
-        user.save()
+        try:
+            token = Token.objects.get(user=user)
+            token.delete()
+        except Token.DoesNotExist:
+            pass
 
     return Response({"status": "success", "message": "Logout successful."}, status=status.HTTP_200_OK)
 
+
 #-----------------------Update User---------------------
 class UpdateUser(generics.UpdateAPIView):
-    permission_classes = (IsAuthenticated,)  
-    authentication_classes=(TokenAuthentication,)
-    queryset= User.objects.all()
-    serializer_class=UserSerializer
+    permission_classes = (IsAuthenticated,)
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
     def get_object(self):
         return self.request.user
-    
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
 
 #--------------------Delete User---------------------
 
 class DeleteUser(generics.DestroyAPIView):
     permission_classes = (AllowAny,)  
-    authentication_classes=(TokenAuthentication)
     queryset= User.objects.all()
     serializer_class=UserSerializer
 
@@ -88,7 +84,6 @@ class DeleteUser(generics.DestroyAPIView):
 #--------------------------Retrieve Current User Profile-----------------------
 class RetrieveUser(generics.RetrieveAPIView):
     permission_classes = (AllowAny,)  
-    authentication_classes = (TokenAuthentication,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -152,55 +147,9 @@ def activate_user(request, uidb64, token):
         return Response({'message': 'Invalid activation link.'}, status=status.HTTP_400_BAD_REQUEST)
     
 
-# ------------------------Post View-------------------------
-
-# @api_view(['GET', 'POST'])
-# @permission_classes([AllowAny,])
-# def post_view(request):
-#     if request.method == 'POST':
-#         post_serializer=PostSerializer(data=request.data)
-#         if post_serializer.is_valid():
-#             post_serializer.save()
-#             return Response({"message":"Post was published","post":post_serializer.data},201)
-#         return Response({ post_serializer.errors,400})
-    
-#     elif request.method=='GET':
-#         posts = Post.get_all_posts()
-#         # posts = Post.objects.all()
-    
-#         serialized_post=PostSerializer(posts, many=True).data
-#         return Response({"data": serialized_post, "message": "success"},200 )
-
-
-# @api_view(['GET','PUT','DELETE'])
-# @permission_classes([AllowAny,])
-
-# def get_edit_delete(request, id):
-    
-#     post = Post.objects.filter(id=id).first()
-#     # first method  to return first object when you expect at most one object
-
-# # GET Method
-#     if request.method == 'GET':
-#         post_serialized = PostSerializer(post).data
-#         return  Response({"Data ":post_serialized}, status=200)
-    
-# # PUT Method
-#     elif request.method == 'PUT':
-#         post_serialized = PostSerializer(instance=post , data=request.data)
-#         if post_serialized.is_valid():
-#             post_serialized.save()
-#             return Response({"message":"Edit Done Successfuly","Post":post_serialized.data},200)
-#         return Response(post_serialized.errors, status=400)
-# # DELETE Method
-#     else:  
-#         post.delete()
-#         return Response({"message":"The Post was deleted","object Deleted":post.id})
-
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def post_publish(request):
+def create_post(request):
     if request.method == 'POST':
         request.data['author'] = request.user.id
         post_serializer = PostSerializer(data=request.data)
@@ -258,9 +207,8 @@ def post_detail(request, id):
             return Response({"message": "You are not authorized to delete this post"}, status=403)
         
 
-from rest_framework import viewsets
-from .customPermession import IsAuthor
 
+#--------- if use viewset instead regular function-----------------
 
 class PostsView(viewsets.ModelViewSet):
     queryset = Post.objects.all().order_by('id')
@@ -276,31 +224,3 @@ class PostsView(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
     
-
-
-
-
-@api_view(['POST'])
-@permission_classes([])
-def login_view(request):
-    if request.user.is_authenticated:
-        return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
-
-    username = request.data.get('username')
-    password = request.data.get('password')
-
-    user = authenticate(request, username=username, password=password)
-
-    if user is not None:
-        login(request, user)
-
-        # Check if a token already exists for the user
-        token, created = Token.objects.get_or_create(user=user)
-
-        return Response({
-            "status": "success",
-            "message": "Login successful.",
-            "token": token.key
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
