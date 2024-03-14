@@ -21,11 +21,6 @@ from django.contrib.auth import authenticate, login, logout
 
 
 
-
-
-
-
-
 ############################# Login ##########################
 @api_view(['POST'])
 @permission_classes([])
@@ -69,52 +64,32 @@ def logout_view(request):
 
 ############################################### Update User ##############################
 class UpdateUser(generics.UpdateAPIView):
-    permission_classes=(IsAdminUser,IsAuthenticated)
+    permission_classes = (IsAuthenticated,)  
     authentication_classes=(TokenAuthentication,)
     queryset= User.objects.all()
     serializer_class=UserSerializer
 
+    def get_object(self):
+        return self.request.user
+    
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
 ###################### Delete User #########################
 
 class DeleteUser(generics.DestroyAPIView):
-    permission_classes=(IsAdminUser,IsAuthenticated)
+    permission_classes = (AllowAny,)  
     authentication_classes=(TokenAuthentication)
     queryset= User.objects.all()
     serializer_class=UserSerializer
 
 
 #################################    Retrieve User    ####################################
-# class RetrieveUser(generics.RetrieveAPIView):
-#     permission_classes=(IsAdminUser,IsAuthenticated)
-#     authentication_classes=(TokenAuthentication,)
-#     queryset= User.objects.all()
-#     serializer_class=UserSerializer
 class RetrieveUser(generics.RetrieveAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)  
     authentication_classes = (TokenAuthentication,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
-    def get_queryset(self):
-        # Get the user token from the request's authentication header
-        token = self.request.auth
-        if token:
-            # Retrieve the user associated with the token
-            user = User.objects.filter(token=token).first()
-            if user:
-                # Return a queryset containing only the authenticated user
-                return User.objects.filter(pk=user.pk)
-        # If no token or user is found, return an empty queryset
-        return User.objects.none()
-
-    def get(self, request, *args, **kwargs):
-        # Override the get method to return a response
-        queryset = self.get_queryset()
-        serializer = self.serializer_class(queryset, many=True)
-        return Response(serializer.data)
-
-
-
 
 ################################### Register User #######################################333
 @api_view(['POST'])

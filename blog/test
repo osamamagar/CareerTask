@@ -1,3 +1,6 @@
 To test the login 
-curl -X POST http://localhost:8000/blog/api/token-login/ -d "username=osama" -d "password=osm12345" 
+curl -X POST http://localhost:8000/blog/api/login/ -d "username=osama" -d "password=osm12345" 
 
+If the user is already logged in, there's no need to provide the username and password again. Instead, you can simply send a POST request to the logout endpoint without any additional parameters.
+
+curl -X POST http://localhost:8000/blog/api/logout_view/
