@@ -13,10 +13,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
-from blog.models import PasswordResetToken,User  
+from blog.models import *
 import uuid
 from rest_framework import generics
 from rest_framework.authentication import TokenAuthentication
+from django.contrib.auth import authenticate, login, logout
 
 
 
@@ -28,46 +29,46 @@ from rest_framework.authentication import TokenAuthentication
 ############################# Login ##########################
 @api_view(['POST'])
 @permission_classes([])
-def user_login(request):
-    # Extract username and password from request data
+def login_view(request):
+    if request.user.is_authenticated:
+        return Response({"status": "error", "message": "User is already authenticated."}, status=status.HTTP_400_BAD_REQUEST)
+
     username = request.data.get('username')
     password = request.data.get('password')
 
-    # Authenticate user
-    user = authenticate(username=username, password=password)
+    user = authenticate(request, username=username, password=password)
 
-    if user:
-        # Check if user's email is verified
-        if user.is_email_verified:
-            # Generate or retrieve token
-            token, _ = Token.objects.get_or_create(user=user)
-            # Serialize user data (if needed)
-            user_serializer = UserSerializer(user)
-            # Return token and user data in the response
-            return Response({
-                'token': token.key,
-                'user': user_serializer.data,
-                'message': 'Login successful.'
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Email is not verified.'}, status=status.HTTP_401_UNAUTHORIZED)
+    if user is not None:
+        login(request, user)
+
+        # Generate a new token for the authenticated user
+        user.token = uuid.uuid4()
+        user.save()
+
+        return Response({
+            "status": "success",
+            "message": "Login successful.",
+            "token": str(user.token)
+        }, status=status.HTTP_200_OK)
     else:
-        return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-
-
+        return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
+    
 ####################################---------  logout  -------------###################################
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def user_logout(request):
+@api_view(['POST'])
+def logout_view(request):
+    logout(request)
 
-    request.auth.delete()
-    return Response('User Logged out successfully',200) 
+    # Revoke the token (optional)
+    user = request.user
+    if user.is_authenticated:
+        user.token = None
+        user.save()
+
+    return Response({"status": "success", "message": "Logout successful."}, status=status.HTTP_200_OK)
 
 
-
-############################ Update, Retrieve & Destroy ########################
-class RetrieveUpdateDestroyUser(generics.RetrieveUpdateDestroyAPIView):
+############################################### Update User ##############################
+class UpdateUser(generics.UpdateAPIView):
     permission_classes=(IsAdminUser,IsAuthenticated)
     authentication_classes=(TokenAuthentication,)
     queryset= User.objects.all()
@@ -80,7 +81,37 @@ class DeleteUser(generics.DestroyAPIView):
     authentication_classes=(TokenAuthentication)
     queryset= User.objects.all()
     serializer_class=UserSerializer
-    
+
+
+#################################    Retrieve User    ####################################
+# class RetrieveUser(generics.RetrieveAPIView):
+#     permission_classes=(IsAdminUser,IsAuthenticated)
+#     authentication_classes=(TokenAuthentication,)
+#     queryset= User.objects.all()
+#     serializer_class=UserSerializer
+class RetrieveUser(generics.RetrieveAPIView):
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (TokenAuthentication,)
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        # Get the user token from the request's authentication header
+        token = self.request.auth
+        if token:
+            # Retrieve the user associated with the token
+            user = User.objects.filter(token=token).first()
+            if user:
+                # Return a queryset containing only the authenticated user
+                return User.objects.filter(pk=user.pk)
+        # If no token or user is found, return an empty queryset
+        return User.objects.none()
+
+    def get(self, request, *args, **kwargs):
+        # Override the get method to return a response
+        queryset = self.get_queryset()
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
 
 
 
@@ -145,58 +176,9 @@ def activate_user(request, uidb64, token):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist, PasswordResetToken.DoesNotExist):
         return Response({'message': 'Invalid activation link.'}, status=status.HTTP_400_BAD_REQUEST)
     
-# @api_view(['POST'])
-# @permission_classes([AllowAny])
-# def register_user(request):
-#     serializer = RegisterSerializer(data=request.data)
-#     if serializer.is_valid():
-#         user = serializer.save()
-
-#         activation_token = generate_activation_token(user)
-#         current_site = get_current_site(request)
-
-#         PasswordResetToken.objects.create(user=user, token=activation_token)
-
-#         send_activation_email(user, activation_token, current_site)
-
-#         return Response({"status": "success", "message": "User registered successfully. Check your email for activation."}, status=status.HTTP_201_CREATED)
-
-#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# _________________________________________________________________________________
 
 
-# def generate_activation_token(user):
-#     return str(uuid.uuid4())
 
 
-# def send_activation_email(user, activation_token, current_site):
-#     subject = 'Activate Your Account'
-#     message = render_to_string('blog/activation_email.html', {
-#         'user': user,
-#         'protocol': 'http',
-#         'domain': current_site.domain,
-#         'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-#         'token': activation_token,
-#     })
-#     user.email_user(subject, message)
 
-
-# @api_view(['GET', 'POST'])
-# @permission_classes([AllowAny])
-# @csrf_exempt
-# def activate_user(request, uidb64, token):
-#     try:
-#         uid = smart_str(urlsafe_base64_decode(uidb64))
-#         user = User.objects.get(pk=uid)
-#         password_reset_token = PasswordResetToken.objects.get(user=user, token=token)
-        
-#         expiration_time = 24 * 60 * 60  # 24 hours in seconds
-
-#         if not user.is_email_verified and (timezone.now() - password_reset_token.created_at).total_seconds() < expiration_time:
-#             user.is_email_verified = True
-#             user.save()
-#             password_reset_token.delete()
-#             return Response({'message': 'Account activated successfully.'}, status=status.HTTP_200_OK)
-#         else:
-#             return Response({'message': 'Invalid activation link.'}, status=status.HTTP_400_BAD_REQUEST)
-#     except (TypeError, ValueError, OverflowError, User.DoesNotExist, PasswordResetToken.DoesNotExist):
-#         return Response({'message': 'Invalid activation link.'}, status=status.HTTP_400_BAD_REQUEST)
