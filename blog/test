@@ -4,3 +4,16 @@ curl -X POST http://localhost:8000/blog/api/login/ -d "username=osama" -d "passw
 If the user is already logged in, there's no need to provide the username and password again. Instead, you can simply send a POST request to the logout endpoint without any additional parameters.
 
 curl -X POST http://localhost:8000/blog/api/logout_view/
+
+
+
+to test post with method post 
+{
+    "message": "Post was published",
+    "post": {
+        "id": 1,
+        "title": "first Post",
+        "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "author": 2
+    }
+}

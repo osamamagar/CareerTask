@@ -14,21 +14,19 @@ class User(AbstractUser):
             self.token = uuid.uuid4()  # Generate token only for new users
         return super().save(*args, **kwargs)
 
-# class UserToken(models.Model):
-#     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)  # Use get_user_model() to support custom user model
-#     token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-#     def __str__(self):
-#         return f"Token for {self.user.username}"
 
 class Post(models.Model):
     title = models.CharField(max_length=255, null=False)
     content = models.TextField(null=False)
-    author = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)  # Use get_user_model() here as well
+    author = models.ForeignKey(User, on_delete=models.CASCADE)  
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @classmethod
+    def get_all_posts(cls):
+        return cls.objects.all()
+
 class PasswordResetToken(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)  # Use get_user_model() here as well
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
     token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)

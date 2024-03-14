@@ -21,7 +21,7 @@ from django.contrib.auth import authenticate, login, logout
 
 
 
-############################# Login ##########################
+#-----------------------View for user to login page ----------------
 @api_view(['POST'])
 @permission_classes([])
 def login_view(request):
@@ -47,8 +47,8 @@ def login_view(request):
         }, status=status.HTTP_200_OK)
     else:
         return Response({"status": "error", "message": "Invalid username or password."}, status=status.HTTP_400_BAD_REQUEST)
-    
-####################################---------  logout  -------------###################################
+
+#-------------------Logs out for current users logged in---------------------
 @api_view(['POST'])
 def logout_view(request):
     logout(request)
@@ -61,8 +61,7 @@ def logout_view(request):
 
     return Response({"status": "success", "message": "Logout successful."}, status=status.HTTP_200_OK)
 
-
-############################################### Update User ##############################
+#-----------------------Update User---------------------
 class UpdateUser(generics.UpdateAPIView):
     permission_classes = (IsAuthenticated,)  
     authentication_classes=(TokenAuthentication,)
@@ -75,7 +74,7 @@ class UpdateUser(generics.UpdateAPIView):
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
-###################### Delete User #########################
+#--------------------Delete User---------------------
 
 class DeleteUser(generics.DestroyAPIView):
     permission_classes = (AllowAny,)  
@@ -84,14 +83,15 @@ class DeleteUser(generics.DestroyAPIView):
     serializer_class=UserSerializer
 
 
-#################################    Retrieve User    ####################################
+    
+#--------------------------Retrieve Current User Profile-----------------------
 class RetrieveUser(generics.RetrieveAPIView):
     permission_classes = (AllowAny,)  
     authentication_classes = (TokenAuthentication,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-################################### Register User #######################################333
+#-----------------------------------Register User------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -111,13 +111,12 @@ def register_user(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-################################------------- Activate Email --------------------################################
-
+# ------------------Activating the email of a new registered account----------------
 def generate_activation_token(user):
     token = str(uuid.uuid4())
     return token
 
-#Send Activation Email
+# -------------------send_activation_email-----------------
 def send_activation_email(user, activation_token, current_site):
     subject = 'Activate Your Account'
     message = render_to_string('blog/activation_email.html', {
@@ -151,9 +150,49 @@ def activate_user(request, uidb64, token):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist, PasswordResetToken.DoesNotExist):
         return Response({'message': 'Invalid activation link.'}, status=status.HTTP_400_BAD_REQUEST)
     
-# _________________________________________________________________________________
+
+# ------------------------Post View-------------------------
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny,])
+def post_view(request):
+    if request.method == 'POST':
+        post_serializer=PostSerializer(data=request.data)
+        if post_serializer.is_valid():
+            post_serializer.save()
+            return Response({"message":"Post was published","post":post_serializer.data},201)
+        return Response({ post_serializer.errors,400})
+    
+    elif request.method=='GET':
+        posts = Post.get_all_posts()
+        # posts = Post.objects.all()
+    
+        serialized_post=PostSerializer(posts, many=True).data
+        return Response({"data": serialized_post, "message": "success"},200 )
 
 
+@api_view(['GET','PUT','DELETE'])
+@permission_classes([AllowAny,])
 
+def get_edit_delete(request, id):
+    
+    post = Post.objects.filter(id=id).first()
+    # first method  to return first object when you expect at most one object
 
+# GET Method
+    if request.method == 'GET':
+        post_serialized = PostSerializer(post).data
+        return  Response({"Data ":post_serialized}, status=200)
+    
+# PUT Method
+    elif request.method == 'PUT':
+        post_serialized = PostSerializer(instance=post , data=request.data)
+        if post_serialized.is_valid():
+            post_serialized.save()
+            return Response({"message":"Edit Done Successfuly","Post":post_serialized.data},200)
+        return Response(post_serialized.errors, status=400)
+# DELETE Method
+    else:  
+        post.delete()
+        return Response({"message":"The Post was deleted","object Deleted":post.id})
 
