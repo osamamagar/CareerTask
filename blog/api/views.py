@@ -15,6 +15,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 import uuid
 from .serializers import RegisterSerializer, PostSerializer, UserSerializer
+from blog.tokens import PasswordResetTokenGenerator
 
 
 # -----------------------View for user to login page ----------------
@@ -131,8 +132,6 @@ def send_activation_email(user, activation_token, current_site):
     user.email_user(subject, message)
 
 # -------------------------Activate user-------------------------------------
-
-
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
@@ -164,8 +163,10 @@ def activate_user(request, uidb64, token):
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-        request.data['author'] = request.user.id
-        post_serializer = PostSerializer(data=request.data)
+        data = request.data.copy()
+        data['author'] = request.user.id
+        # request.data['author'] = request.user.id
+        post_serializer = PostSerializer(data=data)
         if post_serializer.is_valid():
             post_serializer.save()
 
@@ -245,11 +246,3 @@ class PostsView(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
-
-
-
-
-
-
-
-

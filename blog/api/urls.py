@@ -2,15 +2,16 @@ from django.urls import path,include
 from .views import *
 from rest_framework.routers import DefaultRouter
 
-
+#--------To use ViewSet---------------
 router = DefaultRouter()
 router.register(r'', PostsView, basename='post')
+#-------------------------
 
 urlpatterns =[
 
 #------------------------- Account --------------------------------
     
-    path('login/', login_view, name='logout_view'),
+    path('login/', login_view, name='login_view'),
     path('logout/', logout_view, name='logout_view'),
     path('register/', register_user, name='register_user'),
     path('retrieve_user/<int:pk>/',RetrieveUser.as_view()),
