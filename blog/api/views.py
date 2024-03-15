@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate, login, logout
@@ -78,14 +78,14 @@ class UpdateUser(generics.UpdateAPIView):
 
 
 class DeleteUser(generics.DestroyAPIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,IsAdminUser)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
 # --------------------------Retrieve Current User Profile-----------------------
 class RetrieveUser(generics.RetrieveAPIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -184,7 +184,7 @@ def create_post(request):
 # ---------------Method get-------------------
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def post_list(request):
     if request.method == 'GET':
         posts = Post.objects.all()
@@ -207,15 +207,19 @@ def post_detail(request, id):
         return Response({"Data": post_serialized}, status=200)
 
     elif request.method == 'PUT':
+        request_data = request.data.copy()
+        request_data.pop('author', None)
+
         # Check if the current user is the author of the post
         if request.user == post.author:
-            post_serialized = PostSerializer(instance=post, data=request.data)
+            post_serialized = PostSerializer(instance=post, data=request_data, partial=True)
             if post_serialized.is_valid():
                 post_serialized.save()
-                return Response({"message": "Post updated successfully", "Post": post_serialized.data}, status=200)
-            return Response(post_serialized.errors, status=400)
+                return Response({"message": "Post updated successfully", "Post": post_serialized.data}, status=status.HTTP_200_OK)
+            return Response(post_serialized.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"message": "You are not authorized to update this post"}, status=403)
+            return Response({"message": "You are not authorized to update this post"}, status=status.HTTP_403_FORBIDDEN)
+
 
     elif request.method == 'DELETE':
         # Check if the current user is the author of the post
@@ -241,3 +245,11 @@ class PostsView(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
+
+
+
+
+
+
+
+

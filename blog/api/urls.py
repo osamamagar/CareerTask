@@ -22,9 +22,9 @@ urlpatterns =[
 #------------------------- Post --------------------------------
     path('create_post/',create_post,name= 'create_post'),
     path('post_list/',post_list,name= 'post_list'),
-    path('post_detail/<int:id>',post_detail,name= 'post_detail'),
-
-#--------- if use viewset instead regular function-----------------
+    path('post_detail/<int:id>/',post_detail,name= 'post_detail'),
+   
+    #---------------if want use viewset------
     path('viewset/', include(router.urls)),
 
 
