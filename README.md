@@ -1,5 +1,10 @@
-[Backend_Django_Task.pdf]
-(https://github.com/osamamagar/TaskOneSolution/files/14574571/Backend_Django_Task.pdf)
+
+Registering as a new user will be asked by the website to confirm his email by clicking on the link
+If he tries to log in without confirmation, he will receive a message asking him to confirm the email
+Then he can enter
+Only the user can edit or delete the post
+Any user can see posts
+The rest is as required in the following
 
 
                         Task: Create a simple blog application
