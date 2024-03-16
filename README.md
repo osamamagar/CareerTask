@@ -29,6 +29,7 @@ format and vice versa.
 
 7. Write unit tests to ensure the correct functioning of the views and models.
 Preferable to use MongoDB instead of the default database (SQLite) using two ways:
+
 First ORM and you can use djongo package:
 Install the djongo package: pip install djongo.
 Configure Django to use MongoDB as the database backend in the project's settings.py
