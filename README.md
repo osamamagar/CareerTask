@@ -45,14 +45,7 @@ Second ODM and you can the mongoengine package:
 - you won’t need to configure Django settings for database or migrate anything to db.
 
 
-valuation Criteria:
 
-- Correctness and functionality of the implemented models, views, and serializers.
-- Proper usage of Django's best practices and conventions.
-- Error handling and validation of user input.
-- All should be pushed to a github repository.
-- Optional: write unite tests for all implemented views.
-- Optional and preferable: Ability to use MongoDB as the database backend (nice to use it).
                             
                             
                                         Good Luck!
